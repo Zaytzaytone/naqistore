@@ -46,7 +46,15 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((item) => item && item.id && Number.isFinite(item.price) && Number.isFinite(item.qty))
+        .map((item) => ({
+          id: item.id,
+          name: item.name || item.id,
+          price: Number(item.price),
+          qty: Math.max(1, Number(item.qty) || 1),
+        }));
     } catch {
       return [];
     }
@@ -60,6 +68,27 @@
   function clearCart() {
     cart = [];
     saveCart();
+    showToast("Cart cleared");
+  }
+
+  function showToast(message) {
+    let toast = document.getElementById("naqi-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "naqi-toast";
+      toast.style.cssText = "position:fixed;right:20px;bottom:20px;background:#1d3b2c;color:#fff;padding:12px 16px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,.2);font-size:14px;z-index:2000;opacity:0;transform:translateY(10px);transition:all .25s ease;max-width:260px;";
+      document.body.appendChild(toast);
+    }
+
+    toast.textContent = message;
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0)";
+
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateY(10px)";
+    }, 1800);
   }
 
   function buildOrderMessage(name, phone, address) {
@@ -331,12 +360,31 @@
     } else {
       cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 });
     }
+
     saveCart();
+    showToast(`${p.name} added to cart`);
+  }
+
+  function changeQty(productId, delta) {
+    const item = cart.find((l) => l.id === productId);
+    if (!item) return;
+
+    item.qty += delta;
+    if (item.qty <= 0) {
+      cart = cart.filter((l) => l.id !== productId);
+    }
+
+    saveCart();
+    if (item.qty <= 0) {
+      showToast("Item removed from cart");
+    }
   }
 
   function removeLine(productId) {
+    const item = cart.find((l) => l.id === productId);
     cart = cart.filter((l) => l.id !== productId);
     saveCart();
+    if (item) showToast(`${item.name} removed from cart`);
   }
 
   function lineTotal(line) {
@@ -351,6 +399,7 @@
     const countEl = document.getElementById("cart-count");
     const listEl = document.getElementById("cart-list");
     const totalEl = document.getElementById("cart-total-amount");
+    const clearBtn = document.getElementById("clear-cart");
 
     const count = cart.reduce((s, l) => s + l.qty, 0);
     if (countEl) countEl.textContent = String(count);
@@ -361,7 +410,24 @@
     }
 
     if (cart.length === 0) {
-      listEl.innerHTML = '<p class="cart-empty">Your cart is empty. Add a bottle to get started.</p>';
+      listEl.innerHTML = `
+        <div class="cart-empty-state">
+          <p>Your cart is empty.</p>
+          <p class="cart-empty-sub">Add a premium bottle to get started.</p>
+          <button type="button" class="btn-primary cart-empty-btn" data-shop-link>Browse products</button>
+        </div>
+      `;
+      const shopBtn = listEl.querySelector("[data-shop-link]");
+      if (shopBtn) {
+        shopBtn.addEventListener("click", () => {
+          const drawer = document.getElementById("cart-drawer");
+          const backdrop = document.getElementById("cart-backdrop");
+          if (backdrop) backdrop.classList.remove("is-open");
+          if (drawer) drawer.classList.remove("is-open");
+          document.body.classList.remove("cart-open");
+          document.getElementById("shop")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
     } else {
       listEl.innerHTML = cart
         .map(
@@ -369,8 +435,13 @@
           <div class="cart-line" data-id="${l.id}">
             <div>
               <div class="name">${escapeHtml(l.name)}</div>
-              <div class="meta">${formatMoney(l.price)} × ${l.qty}</div>
-              <button type="button" class="remove" data-remove="${escapeHtml(l.id)}">Remove</button>
+              <div class="meta">${formatMoney(l.price)} each</div>
+              <div class="qty-control" aria-label="Quantity controls">
+                <button type="button" class="qty-btn" data-qty="decrease" data-id="${l.id}">−</button>
+                <span class="qty-value">${l.qty}</span>
+                <button type="button" class="qty-btn" data-qty="increase" data-id="${l.id}">+</button>
+                <button type="button" class="remove" data-remove="${escapeHtml(l.id)}">Remove</button>
+              </div>
             </div>
             <div>${formatMoney(lineTotal(l))}</div>
           </div>`
@@ -380,9 +451,23 @@
       listEl.querySelectorAll("[data-remove]").forEach((btn) => {
         btn.addEventListener("click", () => removeLine(btn.getAttribute("data-remove")));
       });
+
+      listEl.querySelectorAll("[data-qty]").forEach((btn) => {
+        const productId = btn.getAttribute("data-id");
+        const action = btn.getAttribute("data-qty");
+        btn.addEventListener("click", () => {
+          changeQty(productId, action === "increase" ? 1 : -1);
+        });
+      });
     }
 
     if (totalEl) totalEl.textContent = formatMoney(cartTotal());
+
+    if (clearBtn) {
+      clearBtn.disabled = cart.length === 0;
+      clearBtn.style.opacity = cart.length === 0 ? "0.5" : "1";
+    }
+
     refreshCheckoutPanel();
   }
 
@@ -425,6 +510,7 @@
     const backdrop = document.getElementById("cart-backdrop");
     const drawer = document.getElementById("cart-drawer");
     const closeBtn = document.getElementById("close-cart");
+    const clearBtn = document.getElementById("clear-cart");
 
     function open() {
       backdrop.classList.add("is-open");
@@ -443,6 +529,8 @@
     if (openBtn) openBtn.addEventListener("click", open);
     if (closeBtn) closeBtn.addEventListener("click", close);
     if (backdrop) backdrop.addEventListener("click", close);
+    if (clearBtn) clearBtn.addEventListener("click", clearCart);
+
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") close();
     });
