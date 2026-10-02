@@ -1,7 +1,7 @@
 (function () {
   const config = window.NaqiConfig || {};
-  const ORDER_EMAIL = config.FORMSUBMIT_EMAIL || "ziyad.abdeldaym@outlook.com";
-  const WHATSAPP_NUMBER = config.WHATSAPP_NUMBER || "201110438175";
+  const ORDER_EMAIL = config.FORMSUBMIT_EMAIL || "your-email@example.com";
+  const WHATSAPP_NUMBER = config.WHATSAPP_NUMBER || "+201234567890";
   const WHATSAPP_LINK = `https://wa.me/${String(WHATSAPP_NUMBER).replace(/[^\d]/g, "")}`;
   const STORAGE_KEY = "naqistore-cart-egp";
 
@@ -37,10 +37,7 @@
   ];
 
   let cart = loadCart();
-
-  /** FormSubmit expects form-urlencoded data (not JSON). Use literal @ in path per their docs. */
   const FORMSUBMIT_AJAX = `https://formsubmit.co/ajax/${ORDER_EMAIL}`;
-
   let checkoutFormOpen = false;
   let checkoutSuccessOpen = false;
 
@@ -66,13 +63,12 @@
   }
 
   function buildOrderMessage(name, phone, address) {
-    const lines = cart.map(
-      (l) => `• ${l.name} × ${l.qty}  →  ${formatMoney(lineTotal(l))}`
-    );
+    const lines = cart.map((l) => `• ${l.name} × ${l.qty}  →  ${formatMoney(lineTotal(l))}`);
     const when = new Date().toLocaleString("en-EG", {
       dateStyle: "medium",
       timeStyle: "short",
     });
+
     return [
       "New order from NaqiStore website",
       "",
@@ -198,7 +194,7 @@
         }
 
         if (!isValidPhone(phone)) {
-          showCheckoutError("Please enter a valid phone number (10–15 digits). ");
+          showCheckoutError("Please enter a valid phone number (10–15 digits).");
           return;
         }
 
@@ -272,10 +268,7 @@
           }
         } catch (err) {
           sent = false;
-          failDetail =
-            err && err.message
-              ? String(err.message)
-              : "A network error occurred while sending the order.";
+          failDetail = err && err.message ? String(err.message) : "A network error occurred while sending the order.";
         }
 
         if (submitBtn) {
@@ -330,6 +323,7 @@
   function addToCart(productId) {
     const p = products.find((x) => x.id === productId);
     if (!p) return;
+
     checkoutSuccessOpen = false;
     const existing = cart.find((l) => l.id === productId);
     if (existing) {
@@ -367,29 +361,28 @@
     }
 
     if (cart.length === 0) {
-      listEl.innerHTML =
-        '<p class="cart-empty">Your cart is empty. Add a bottle to get started.</p>';
+      listEl.innerHTML = '<p class="cart-empty">Your cart is empty. Add a bottle to get started.</p>';
     } else {
       listEl.innerHTML = cart
         .map(
           (l) => `
-        <div class="cart-line" data-id="${l.id}">
-          <div>
-            <div class="name">${escapeHtml(l.name)}</div>
-            <div class="meta">${formatMoney(l.price)} × ${l.qty}</div>
-            <button type="button" class="remove" data-remove="${escapeHtml(l.id)}">Remove</button>
-          </div>
-          <div>${formatMoney(lineTotal(l))}</div>
-        </div>`
+          <div class="cart-line" data-id="${l.id}">
+            <div>
+              <div class="name">${escapeHtml(l.name)}</div>
+              <div class="meta">${formatMoney(l.price)} × ${l.qty}</div>
+              <button type="button" class="remove" data-remove="${escapeHtml(l.id)}">Remove</button>
+            </div>
+            <div>${formatMoney(lineTotal(l))}</div>
+          </div>`
         )
         .join("");
+
       listEl.querySelectorAll("[data-remove]").forEach((btn) => {
         btn.addEventListener("click", () => removeLine(btn.getAttribute("data-remove")));
       });
     }
 
     if (totalEl) totalEl.textContent = formatMoney(cartTotal());
-
     refreshCheckoutPanel();
   }
 
@@ -402,22 +395,23 @@
   function renderProducts() {
     const grid = document.getElementById("product-grid");
     if (!grid) return;
+
     grid.innerHTML = products
       .map(
         (p) => `
-      <article class="product-card">
-        <div class="thumb">
-          <img src="${p.image}" alt="" width="400" height="400" loading="lazy" />
-        </div>
-        <div class="body">
-          <h3>${escapeHtml(p.name)}</h3>
-          <p class="desc">${escapeHtml(p.desc)}</p>
-          <div class="row">
-            <span class="price">${formatMoney(p.price)}</span>
-            <button type="button" class="add" data-add="${escapeHtml(p.id)}">Add to cart</button>
+        <article class="product-card">
+          <div class="thumb">
+            <img src="${p.image}" alt="" width="400" height="400" loading="lazy" />
           </div>
-        </div>
-      </article>`
+          <div class="body">
+            <h3>${escapeHtml(p.name)}</h3>
+            <p class="desc">${escapeHtml(p.desc)}</p>
+            <div class="row">
+              <span class="price">${formatMoney(p.price)}</span>
+              <button type="button" class="add" data-add="${escapeHtml(p.id)}">Add to cart</button>
+            </div>
+          </div>
+        </article>`
       )
       .join("");
 
