@@ -67,8 +67,7 @@
 
   function buildOrderMessage(name, phone, address) {
     const lines = cart.map(
-      (l) =>
-        `• ${l.name} × ${l.qty}  →  ${formatMoney(lineTotal(l))}`
+      (l) => `• ${l.name} × ${l.qty}  →  ${formatMoney(lineTotal(l))}`
     );
     const when = new Date().toLocaleString("en-EG", {
       dateStyle: "medium",
@@ -127,18 +126,37 @@
     }
   }
 
+  function clearCheckoutError() {
+    const err = document.getElementById("checkout-error");
+    if (!err) return;
+    err.hidden = true;
+    err.textContent = "";
+  }
+
+  function showCheckoutError(message) {
+    const err = document.getElementById("checkout-error");
+    if (!err) return;
+    err.hidden = false;
+    err.textContent = message;
+  }
+
   function resetCheckoutFormFields() {
     const name = document.getElementById("checkout-name");
     const phone = document.getElementById("checkout-phone");
     const address = document.getElementById("checkout-address");
-    const err = document.getElementById("checkout-error");
+    clearCheckoutError();
     if (name) name.value = "";
     if (phone) phone.value = "";
     if (address) address.value = "";
-    if (err) {
-      err.hidden = true;
-      err.textContent = "";
-    }
+  }
+
+  function normalizePhone(value) {
+    return String(value || "").replace(/[^\d+]/g, "").trim();
+  }
+
+  function isValidPhone(value) {
+    const normalized = normalizePhone(value);
+    return /^\+?\d{10,15}$/.test(normalized);
   }
 
   function setupCheckout() {
@@ -152,6 +170,7 @@
       btnProceed.addEventListener("click", () => {
         if (cart.length === 0) return;
         checkoutFormOpen = true;
+        clearCheckoutError();
         refreshCheckoutPanel();
       });
     }
@@ -170,18 +189,25 @@
         if (cart.length === 0) return;
 
         const name = document.getElementById("checkout-name")?.value.trim() || "";
-        const phone = document.getElementById("checkout-phone")?.value.trim() || "";
+        const phone = normalizePhone(document.getElementById("checkout-phone")?.value || "");
         const address = document.getElementById("checkout-address")?.value.trim() || "";
 
-        if (!name || !phone || !address) {
-          if (errEl) {
-            errEl.textContent = "Please fill in your name, phone, and address.";
-            errEl.hidden = false;
-          }
+        if (!name || name.length < 2) {
+          showCheckoutError("Please enter your full name.");
           return;
         }
 
-        if (errEl) errEl.hidden = true;
+        if (!isValidPhone(phone)) {
+          showCheckoutError("Please enter a valid phone number (10–15 digits). ");
+          return;
+        }
+
+        if (!address || address.length < 8) {
+          showCheckoutError("Please add a complete delivery address.");
+          return;
+        }
+
+        clearCheckoutError();
 
         const message = buildOrderMessage(name, phone, address);
         const submitBtn = document.getElementById("submit-order");
@@ -231,22 +257,25 @@
           if (!res.ok) {
             failDetail =
               (typeof data.message === "string" && data.message) ||
-              `Server returned ${res.status}.`;
+              `The email service returned ${res.status}.`;
           } else if (rejected) {
             sent = false;
             failDetail =
               (typeof data.message === "string" && data.message) ||
-              "FormSubmit rejected the request.";
+              "The email service rejected the request.";
           } else if (accepted) {
             sent = true;
           } else {
             sent = false;
             failDetail =
-              "Unexpected response from email service. If you opened this site as a file (double-click HTML), open it through a web server instead.";
+              "We could not confirm the order was sent. This can happen when the page is opened as a local file instead of through a web server.";
           }
         } catch (err) {
           sent = false;
-          failDetail = err && err.message ? String(err.message) : "Network error.";
+          failDetail =
+            err && err.message
+              ? String(err.message)
+              : "A network error occurred while sending the order.";
         }
 
         if (submitBtn) {
@@ -259,10 +288,9 @@
             errEl.hidden = false;
             const hint =
               failDetail ||
-              "Could not reach the email service. If you opened this page as a file (file://), use a local server or upload the site—otherwise browsers block the request.";
+              "We could not send your order right now. Please try again in a moment.";
             errEl.innerHTML =
-              escapeHtml(hint) +
-              ` <a href="${WHATSAPP_LINK}" target="_blank" rel="noopener noreferrer">WhatsApp your order</a>.`;
+              `${escapeHtml(hint)} <a href="${WHATSAPP_LINK}" target="_blank" rel="noopener noreferrer">Send via WhatsApp</a>.`;
           }
           return;
         }
@@ -431,4 +459,3 @@
   setupCartDrawer();
   setupCheckout();
 })();
-
