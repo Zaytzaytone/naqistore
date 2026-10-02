@@ -1,4 +1,8 @@
 (function () {
+  const config = window.NaqiConfig || {};
+  const ORDER_EMAIL = config.FORMSUBMIT_EMAIL || "ziyad.abdeldaym@outlook.com";
+  const WHATSAPP_NUMBER = config.WHATSAPP_NUMBER || "201110438175";
+  const WHATSAPP_LINK = `https://wa.me/${String(WHATSAPP_NUMBER).replace(/[^\d]/g, "")}`;
   const STORAGE_KEY = "naqistore-cart-egp";
 
   const products = [
@@ -34,7 +38,6 @@
 
   let cart = loadCart();
 
-  const ORDER_EMAIL = "ziyad.abdeldaym@outlook.com";
   /** FormSubmit expects form-urlencoded data (not JSON). Use literal @ in path per their docs. */
   const FORMSUBMIT_AJAX = `https://formsubmit.co/ajax/${ORDER_EMAIL}`;
 
@@ -259,7 +262,7 @@
               "Could not reach the email service. If you opened this page as a file (file://), use a local server or upload the site—otherwise browsers block the request.";
             errEl.innerHTML =
               escapeHtml(hint) +
-              ' <a href="https://wa.me/201110438175" target="_blank" rel="noopener noreferrer">WhatsApp your order</a>.';
+              ` <a href="${WHATSAPP_LINK}" target="_blank" rel="noopener noreferrer">WhatsApp your order</a>.`;
           }
           return;
         }
@@ -428,3 +431,4 @@
   setupCartDrawer();
   setupCheckout();
 })();
+

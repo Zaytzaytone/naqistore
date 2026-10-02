@@ -1,4 +1,4 @@
 window.NaqiConfig = {
-  FORMSUBMIT_EMAIL: "your-email@example.com",
-  WHATSAPP_NUMBER: "+201234567890",
+  FORMSUBMIT_EMAIL: "ziyad.abdeldaym@outlook.com",
+  WHATSAPP_NUMBER: "201110438175",
 };
